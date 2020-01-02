@@ -33,6 +33,17 @@ Array.prototype.unique = function() {
 }
 ```
 
+```js
+var out = {}
+var outArr = [];
+for(var i = 0;i < arr.length;i ++) {
+    if(!out[arr[i]]) {
+        out[arr[i]] = 1;
+        outArr.push(arr[i])
+    }
+}
+```
+
 ### for循环嵌套,利用splice去重
 
 ```js
@@ -50,6 +61,19 @@ function newArr(arr){
 }
 var arr = [1,1,2,5,6,3,5,5,6,8,9,8];
 console.log(newArr(arr))
+```
+
+```js
+var len = arr.length
+for(var i = 0;i < len;i ++) {
+    for(var j = i + 1;j < len;j ++) {
+        if(arr[i] == arr[j]) {
+            arr.splice(j,1);
+            len --;
+            j --;
+        }
+    }
+}
 ```
 
 ### 建新数组,利用indexOf去重
@@ -71,6 +95,15 @@ var arr = [1,1,2,5,5,6,8,9,8];
 console.log(newArr(arr))
 ```
 
+```js
+var out = [];
+arr.forEach(function(ele) {
+    if(out.indexOf(ele) == -1) {
+        out.push(ele);
+    }
+})
+```
+
 ### ES6中利用Set去重
 
 ```js
@@ -79,5 +112,11 @@ function newArr(arr){
 }
 var arr = [1,1,2,9,6,9,6,3,1,4,5];
 console.log(newArr(arr))
+```
+
+```js
+function handle() {
+    return Array.from(new Set(arr));
+}
 ```
 

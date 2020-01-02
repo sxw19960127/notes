@@ -202,6 +202,23 @@ function clone1(obj) {
 }
 ```
 
+```js
+function deepClone() {
+    return JSON.parse(JSON.stringify(arr));
+}
+```
+
+```js
+function deepClone(obj) {
+	var newObj = obj instanceof Array ? [] : {};
+	if(typeof obj != 'object') return obj;
+	for(var prop in obj) {
+		newObj[prop] = typeof obj[prop] == 'object' ? deepClone(obj[prop] : obj[prop])
+	}
+	return newObj;
+}
+```
+
 
 
 
