@@ -956,3 +956,571 @@ watch: {
 
 ![函数防抖](D:\notes\Vue项目\mini_cinema\img\函数防抖.jpg)
 
+
+
+# 影院页面数据的渲染
+
+接口没有，所以还是使用假数据写死页面。
+
+```html
+<li v-for="item in cinemaList" :key="item.id">
+    <div>
+       <span>{{ item.nm }})</span>
+       <span class="q">
+          <span class="price">{{ item.sellPrice }}</span> 元起
+       </span>
+    </div>
+    <div class="address">
+       <span>{{ item.addr }}</span>
+       <span>{{ item.distance }}</span>
+    </div>
+    <div class="card">
+       // 遍历对象也可以使用v-for指令,其中num遍历的是对象的属性名,key遍历的是对象的属性值
+       // 调用局部过滤器,将 {{key | formateCard}} key交给formateCard去处理得到最终值
+       <div v-for="(num,key) in item.tag" v-if="num === 1" :key="key">{{ key | formatCard }}</div>
+    </div>
+ </li>
+```
+
+```js
+export default {
+   name: 'CiList',
+   data() {
+      return {
+         cinemaList: []
+      }
+   },
+   mounted() {
+      this.axios.get('/api/cinemaList?cityId=3').then(res => {
+         var msg = res.data.msg;
+         if(msg === 'ok') {
+            this.cinemaList = res.data.data.cinemas;
+         }
+      })
+   },
+   filters: { // 局部过滤器
+      formatCard(key) {
+         var card = [
+            { key: 'allowRefund',value: '改签' },
+            { key: 'endose',value: '退' },
+            { key: 'sell',value: '折扣卡' },
+            { key: 'snack',value: '小吃' }
+         ];
+         for(var i = 0;i < card.length;i ++) {
+            if(card[i].key === key) {
+               return card[i].value
+            }
+         }
+         return '' // 都没有匹配到,给一个默认值 '空字符串
+      }
+   }
+}
+```
+
+## 局部过滤器实现标签颜色变化
+
+```css
+// 定义两个样式
+
+.or{color: red;}
+.op{color: orange;}
+```
+
+```html
+<div :class="key | classCard"></div>
+```
+
+```js
+export default {
+   name: 'CiList',
+   data() {
+      return {
+         cinemaList: []
+      }
+   },
+   filters: { // 局部过滤器
+      formatCard(key) {
+         var card = [
+            { key: 'allowRefund',value: '改签' },
+            { key: 'endose',value: '退' },
+            { key: 'sell',value: '折扣卡' },
+            { key: 'snack',value: '小吃' }
+         ];
+         for(var i = 0;i < card.length;i ++) {
+            if(card[i].key === key) {
+               return card[i].value
+            }
+         }
+         return '' // 都没有匹配到,给一个默认值 '空字符串
+      },
+      classCard(key) {
+      	 var card = [
+            { key: 'allowRefund',value: 'or' },
+            { key: 'endose',value: 'op' },
+            { key: 'sell',value: 'or' },
+            { key: 'snack',value: 'op' }
+         ];
+         for(var i = 0;i < card.length;i ++) {
+            if(card[i].key === key) {
+               return card[i].value
+            }
+         }
+         return '' // 都没有匹配到,给一个默认值 '空字符串
+      }
+   }
+}
+```
+
+
+
+# 提交阶段代码到git
+
+```shell
+git status // 查看修改的内容
+git add .
+git commit -m "..."
+git checkout dev // 切换到开发分支上
+git merge setData --no-ff // 将setData合并到开发分支dev上
+:q // 需要我们填写注释,不想写的话就退出
+git log // 查看日志
+^c 退出
+git push ck dev // 提交到远端
+git branch // 查看分支
+git branch -d setData // 删除分支
+```
+
+
+
+# 使用`git`创建分支
+
+```shell
+git checkout -b getCity
+```
+
+
+
+# 移动端遇到的两个问题
+
+## 点击目标跳转到详情页
+
+当我们滑动页面的时候，不触发事件。当我们点击目标区域时，才触发事件。
+
+### `tap`点击事件
+
+`tap`事件的特点就是当且仅当我们点击的时候触发事件。
+
+`tap`事件在原生`js`中是不存在的，所以我们要想使用必须用`touchstart`、`touchmove`、`touchend`去模拟。
+
+当然第三方插件为我们提供了：`zepto`、`vue-touch`、`better-scroll`都为我们解决了这个问题。
+
+还有一个问题就是我们的页面在进行上下滚动的时候，非常的生硬，一点都不流畅的感觉。
+
+同样的第三方插件也为我们提供了：`iscroll`、`swiper`、`better-scroll`。
+
+所以我们决定使用`better-scroll`去使用在我们的项目中。
+
+### `better-scroll`
+
+```shell
+npm install better-scroll --save
+```
+
+ 要求我们上下滚动的内容区域一定要长于外层父级的容器区域，并且一定要保证上下滚动的区域全部加载完毕之后，再去调用`better=scroll`。
+
+回到`Nowplaying`页面：
+
+```js
+import BScroll from 'better-scroll'
+```
+
+```js
+// 1.引入better-scroll组件
+import BScroll from 'better-scroll'
+export default {
+   name: 'NowPlaying',
+   data() {
+      return {
+         movieList: []
+      }
+   },
+   mounted() {
+      this.axios.get('/api/movieOnInfoList?cityId=476').then((res) => {
+         var msg = res.data.msg;
+         if(msg === 'ok') {
+            this.movieList = res.data.data.movieList;
+            // 2.$nextTick()方法能够保证我们的数据完全被渲染到页面上,并且页面已经完整呈现出来了
+            this.$nextTick(() => {
+               // 3.在$nextTick()里面new BScroll方法就能成功
+               new BScroll( this.$refs.movie_body, {})
+            })
+         }
+      })
+   }
+}
+```
+
+```html
+<!-- 4.给父级容器起一个ref属性,用以找到他 -->
+<div class="movie_body" ref="movie_body"></div>
+```
+
+---
+
+关于点击跳转到详情页：
+
+```html
+<!-- 1.给目标区域,添加tap事件 -->
+<div class="pic_show" @tap="handleToDetail"></div>
+```
+
+```js
+new BScroll( this.$refs.movie_body, {
+  // 2.在better-scroll中的第二个参数中进行配置,开启tap功能
+  tap: true
+})
+```
+
+```js
+methods: {
+  // 3.测试
+  handleToDetail() {
+     console.log(111)
+  }
+}
+```
+
+---
+
+### 下拉刷新
+
+通过配置`probeType`属性实现滑动截流效果。
+
+```js
+this.$nextTick(() => {
+   var scroll = new BScroll( this.$refs.movie_body, {
+      tap: true,
+      probeType: 1 // 当值 = 1时,滚动的时候会派发scroll事件且会截流
+   })
+   scroll.on('scroll', () => {
+      console.log('scroll')
+   })
+})
+```
+
+```js
+mounted() {
+  this.axios.get('/api/movieOnInfoList?cityId=476').then((res) => {
+     var msg = res.data.msg;
+     if(msg === 'ok') {
+        this.movieList = res.data.data.movieList;
+        // 2.$nextTick()方法能够保证我们的数据完全被渲染到页面上,并且页面已经完整呈现出来了
+        this.$nextTick(() => {
+           // 3.在$nextTick()里面new BScroll方法就能成功
+           var scroll = new BScroll( this.$refs.movie_body, {
+              tap: true,
+              probeType: 1 // = 1时,滚动的时候会派发scroll事件,会截流
+           })
+	
+           // 当拖拽开始时候触发的事件, 参数pos用以检测当前上下拖拽的位置变化
+           scroll.on('scroll', (pos) => {
+              if(pos.y > 30) {
+                 this.pullDownMessage = '正在更新中'
+              }
+              // console.log('scroll')
+           })
+           
+           // scroll touchEnd事件,当拖拽结束之后触发的事件方法
+           scroll.on('touchEnd', (pos) => {
+              if(pos.y > 30) {
+                 this.axios.get('/api/movieOnInfoList?cityId=10').then(res => {
+                    var msg = res.data.msg;
+                    if(msg === 'ok') {
+                       this.pullDownMessage = '更新成功';
+                       // 让文字先出来,让数据延迟1秒再显示出来
+                       setTimeout(() => {
+                          this.movieList = res.data.data.movieList;
+                          this.pullDownMessage = ''
+                       }, 1000)
+                    }
+                 })
+              }
+              // console.log('touchend')
+           })
+        })
+     }
+  })
+},
+```
+
+```js
+data() {
+  return {
+     movieList: [],
+     pullDownMessage: '' // 添加一个下拉拖拽的信息
+  }
+},
+```
+
+```html
+<li>{{ pullDownMessage }}</li>
+```
+
+## 封装better-scroll组件
+
+```vue
+// better-scroll组件 将其注册成为全局组件
+
+<template>
+  <div class="wrapper" ref="wrapper">
+     <slot></slot>
+  </div>
+</template>
+
+<script>
+import BScroll from 'better-scroll'
+export default {
+   name: 'Scroller',
+   mounted() {
+      var scroll = new BScroll(this.$refs.wrapper, {
+         tap: true,
+         probeType: 1
+      })
+   }
+}
+</script>
+
+<style lang="scss" scoped>
+   .wrapper{
+      height: 100%;
+   }
+</style>
+```
+
+```js
+// main.js 入口模块中注册全局组件 scroller
+
+import Scroller from '@/components/Scoller'
+Vue.component('Scroller', Scroller);
+```
+
+**组件中使用**：
+
+```html
+1.使用标签<Scroller>将滚动区域包裹起来
+// 注册全局组件完成之后,只需将上下滚动内容部分用<Scroller>标签包裹起来即可
+<Scroller>
+ <ul>
+   <!-- <li v-for="(item,index) in 10" :key="item + index">
+      <div class="pic_show">
+         <img src="@/img/movie_1.jpg" alt=""> 
+      </div>
+      <div class="info_list">
+         <h2>斗破苍穹</h2>
+         <p>主演: 萧炎,萧熏儿,药老</p>
+         <p>今天33家影院放映600场</p>
+      </div>
+      <div class="btn_mall">
+         购票
+      </div>
+   </li> -->
+   <li class="pullDown">{{ pullDownMessage }}</li>
+   <li v-for="item in movieList" :key="item.id">
+      <!-- 一.添加tap事件 -->
+      <div class="pic_show" @tap="handleToDetail">
+         <img :src="item.img | setWH('128.180')" alt=""> 
+      </div>
+      <div class="info_list">
+         <h2>{{ item.nm }} <img v-if="item.version" src="@/assets/maxs.png" alt=""></h2> 
+         <p>观众评 <span class="grade">{{ item.sc }}</span></p>
+         <p>主演：{{ item.star }}</p>
+         <p>{{ item.showInfo }}</p>
+      </div>
+      <div class="btn_mall">
+         购票
+      </div>
+   </li>
+ </ul>
+</Scroller>
+```
+
+```js
+2.注释掉之前的局部引用better-scroll组件方式
+
+// 1.引入better-scroll组件
+// import BScroll from 'better-scroll'
+export default {
+   name: 'NowPlaying',
+   data() {
+      return {
+         movieList: [],
+         pullDownMessage: ''
+      }
+   },
+   mounted() {
+      this.axios.get('/api/movieOnInfoList?cityId=476').then((res) => {
+         var msg = res.data.msg;
+         if(msg === 'ok') {
+            this.movieList = res.data.data.movieList;
+            // 2.$nextTick()方法能够保证我们的数据完全被渲染到页面上,并且页面已经完整呈现出来了
+            // this.$nextTick(() => {
+            //    // 3.在$nextTick()里面new BScroll方法就能成功
+            //    var scroll = new BScroll( this.$refs.movie_body, {
+            //       tap: true,
+            //       probeType: 1 // = 1时,滚动的时候会派发scroll事件,会截流
+            //    })
+
+            //    scroll.on('scroll', (pos) => {
+            //       if(pos.y > 30) {
+            //          this.pullDownMessage = '正在更新中'
+            //       }
+            //       // console.log('scroll')
+            //    })
+            //    scroll.on('touchEnd', (pos) => {
+            //       if(pos.y > 30) {
+            //          this.axios.get('/api/movieOnInfoList?cityId=10').then(res => {
+            //             var msg = res.data.msg;
+            //             if(msg === 'ok') {
+            //                this.pullDownMessage = '更新成功';
+            //                setTimeout(() => {
+            //                   this.movieList = res.data.data.movieList;
+            //                   this.pullDownMessage = ''
+            //                }, 1000)
+            //             }
+            //          })
+            //       }
+            //       // console.log('touchend')
+            //    })
+            // })
+         }
+      })
+   },
+   methods: {
+      handleToDetail() {
+         console.log(111)
+      }
+   }
+}
+```
+
+### 关于正在更新和更新完成，使用父子通信去实现
+
+```js
+// better-scroll 组件中,通过props创建两个属性,定义两个方法,并且将两个方法回调出去给外界
+
+import BScroll from 'better-scroll'
+export default {
+   name: 'Scroller',
+   // 1.创建两个属性
+   props: {
+      handleToScroll: {
+         type: Function,
+         default: function() {}
+      },
+      handleToTouchEnd: {
+         type: Function,
+         default: function() {}
+      }
+   },
+   mounted() {
+      var scroll = new BScroll(this.$refs.wrapper, {
+         tap: true,
+         probeType: 1
+      })
+
+      // 2.调用上述定义的两个方法
+      // 将上述两个方法回调出去
+      scroll.on('scroll', (pos) => {
+         this.handleToScroll(pos)
+      });
+
+      scroll.on('touchEnd', (pos) => {
+         this.handleToTouchEnd(pos)
+      })
+   }
+}
+```
+
+```js
+// 在父组件中使用上面回调出来的方法
+
+methods: {
+      handleToDetail() {
+         console.log(111)
+      },
+      // 调用封装好的组件中传递出来的函数方法
+      handleToScroll(pos) {
+         if(pos.y > 30) {
+            this.pullDownMessage = '正在更新中'
+         }
+      },
+      handleToTouchEnd(pos) {
+         if(pos.y > 30) {
+            this.axios.get('/api/movieOnInfoList?cityId=10').then(res => {
+               var msg = res.data.msg;
+               if(msg === 'ok') {
+                  this.pullDownMessage = '更新成功';
+                  setTimeout(() => {
+                     this.movieList = res.data.data.movieList;
+                     this.pullDownMessage = ''
+                  }, 1000)
+               }
+            })
+         }
+      }
+   }
+```
+
+```html
+// 最后一步,在标签头部绑定属性
+<Scroller :handleToScroll = "handleToScroll" :handleToTouchEnd = "handleToTouchEnd"></Scroller>
+```
+
+### better-scroller中的点击跳转配置
+
+**设置**：
+
+```js
+// 在better-scroller组件中
+
+mounted() {
+  var scroll = new BScroll(this.$refs.wrapper, {
+     tap: true,
+     probeType: 1
+  })
+
+  // 1.vue是面向对象编程,将scroll赋予全局作用域链
+  this.scroll = scroll;
+ 
+  scroll.on('scroll', (pos) => {
+     this.handleToScroll(pos)
+  });
+
+  scroll.on('touchEnd', (pos) => {
+     this.handleToTouchEnd(pos)
+  })
+},
+methods: {
+  // 2.定义方法
+  toScrollTop(y) { // 3.只在y轴上进行跳转
+     this.scroll.scrollTo(0,y)
+  }
+}
+```
+
+**使用**：
+
+```html
+<Scroller ref="city_List"></Scroller>
+```
+
+```js
+handleToIndex(index) {
+	var h2 = this.$refs.city_sort.getElementsByTagName('h2')
+	// this.$refs.city_sort.parentNode.scrollTop = h2[index].offsetTop;
+	// 将一个refs属性加到组件上,那么他就拿到当前的组件对象,然后我们.出对象的方法,记得加上负号
+	this.$refs.city_List.toScrollTop(-h2[index].offsetTop); 
+}
+```
+
+
+
