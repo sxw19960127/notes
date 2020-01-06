@@ -1524,3 +1524,1053 @@ handleToIndex(index) {
 
 
 
+# 封装loading组件
+
+我们采用的是`CSS3`去做一个`loading`的动画实现，不要使用图片，因为图片本身也是需要发起请求的。
+
+新建一个`loading`组件
+
+[loading动画网址](https://www.runoob.com/w3cnote/free-html5-css3-loaders-preloaders.html)
+
+```vue
+<template>
+  <figure>
+    <div class="dot white"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+    <div class="dot"></div>
+  </figure>
+</template>
+
+<script>
+export default {
+  name: "loading"
+};
+</script>
+
+<style scoped>
+body {
+  background: #222;
+}
+figure {
+  position: absolute;
+  margin: auto;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 6.25em;
+  height: 6.25em;
+  animation: rotate 2.4s linear infinite;
+}
+.white {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  animation: flash 2.4s linear infinite;
+  opacity: 0;
+}
+.dot {
+  position: absolute;
+  margin: auto;
+  width: 2.4em;
+  height: 2.4em;
+  border-radius: 100%;
+  transition: all 1s ease;
+}
+.dot:nth-child(2) {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: #ff4444;
+  animation: dotsY 2.4s linear infinite;
+}
+.dot:nth-child(3) {
+  left: 0;
+  right: 0;
+  top: 0;
+  background: #ffbb33;
+  animation: dotsX 2.4s linear infinite;
+}
+.dot:nth-child(4) {
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: #99cc00;
+  animation: dotsY 2.4s linear infinite;
+}
+.dot:nth-child(5) {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #33b5e5;
+  animation: dotsX 2.4s linear infinite;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0);
+  }
+  10% {
+    width: 6.25em;
+    height: 6.25em;
+  }
+  66% {
+    width: 2.4em;
+    height: 2.4em;
+  }
+  100% {
+    transform: rotate(360deg);
+    width: 6.25em;
+    height: 6.25em;
+  }
+}
+
+@keyframes dotsY {
+  66% {
+    opacity: 0.1;
+    width: 2.4em;
+  }
+  77% {
+    opacity: 1;
+    width: 0;
+  }
+}
+@keyframes dotsX {
+  66% {
+    opacity: 0.1;
+    height: 2.4em;
+  }
+  77% {
+    opacity: 1;
+    height: 0;
+  }
+}
+
+@keyframes flash {
+  33% {
+    opacity: 0;
+    border-radius: 0%;
+  }
+  55% {
+    opacity: 0.6;
+    border-radius: 100%;
+  }
+  66% {
+    opacity: 0;
+  }
+}
+</style>
+```
+
+将其注册成为全局组件。
+
+```js
+// 来到入口函数模块
+
+import Loading from '@/components/Loading'
+Vue.component('Loading', Loading)
+```
+
+```vue
+// 使用
+
+// 1.
+<Loading v-if="flag" />
+// 2.
+<Scroller v-else>
+	...
+</Scroller>
+<script>
+	export default {
+        data() {
+            return {
+                // 3.
+                flag: true
+            }
+        },
+        mounted() {
+            if(msg === 'ok') {
+                this.movieList = res.data.data.movieList;
+                // 4.当数据请求成功之后,让flag变为false
+                this.flag = false
+            }
+        }
+    }
+</script>
+```
+
+
+
+# 城市组件中的状态管理和本地存储
+
+## 本地存储
+
+将请求过来的数据进行本地存储，以实现性能优化的目的。
+
+```js
+// 在City组件中
+
+mounted() {
+  // 2.本地存储完成之后,我们从本地存储中获取数据,不再发起新的请求
+  var cityList = window.localStorage.getItem('cityList');
+  var hotList = window.localStorage.getItem('hotList');
+  
+  // 3.判断一下是否已经将数据全部都存储到本地
+  if(cityList && hotList) {
+     // 4.使用JSON.parse方法,将其解析回来
+     this.cityList = JSON.parse(cityList);
+     this.hotList = JSON.parse(hotList);
+     this.flag = false // 注意: 改为本地存储之后的loading动画也要改变一下
+  }else {
+     this.axios.get('/api/cityList').then((res) => {
+        let msg = res.data.msg
+        if(msg === 'ok') {
+           // 0.获取到的所有数据
+           let cities = res.data.data.cities 
+           var { cityList,hotList } = this.formatCityList(cities)
+           this.cityList = cityList;
+           this.hotList = hotList;
+           this.flag = false
+		
+           // 1.当数据请求过来之后,使用H5的localStorage进行本地存储
+           // 第一个参数是key值,第二个参数是要存储的内容
+           // 因为本地存储的类型是字符串类型,所以使用stringify方法将其转为字符串类型的数组结构
+           window.localStorage.setItem('cityList', JSON.stringify(cityList));
+           window.localStorage.setItem('hotList', JSON.stringify(hotList))
+        }
+     })
+  }
+}
+```
+
+![本地存储](D:\notes\Vue项目\mini_cinema\img\本地存储.jpg)
+
+## 状态管理
+
+```js
+// 入口模块 main.js
+
+import store from './store' // 1.引入
+new Vue({
+   store // 2.注册
+})
+```
+
+```js
+import Vue from 'vue'
+import Vuex from 'vuex'
+import city from './city'
+
+Vue.use(Vuex)
+
+const store = new Vuex.Store({
+   state: {
+
+   },
+   mutations: {
+
+   },
+   actions: {
+
+   },
+   getters: {
+
+   },
+   modules: {
+   	city: city
+   }
+})
+
+export default store
+```
+
+遵循模块化开发思想，新建`city`文件夹，里面新建`index.js`：
+
+```js
+const state = {
+   nm: '北京',
+   id: 1
+};
+
+const actions = {
+
+};
+
+const mutations = {
+   // 定义一个修改state状态的方法,用大写用以区分
+   CITY_INFO(state,payload) {
+      state.nm = payload.nm;
+      state.id = payload.id;
+   }
+}
+
+// 对外的接口
+export default {
+   namespaced: true,
+   state,
+   actions,
+   mutations
+}
+```
+
+使用：
+
+```vue
+// 回到Movie组件下
+// 注意一下这里的一连串的点操作
+<span>{{ $store.state.city.nm }}</span>
+```
+
+![vuex](D:\notes\Vue项目\mini_cinema\img\vuex.jpg)
+
+## 修改状态管理中的nm和id
+
+通过添加点击操作，分别给热门城市和分类中的`li`条件点击事件，并将`nm`和`id`传递过去：
+
+```html
+<div class="city_hot">
+  <h2>热门城市</h2>
+  <ul class="clearfix">
+     <li v-for="item in hotList" :key="item.id" @tap="handleToCity(item.nm,item.id)">{{ item.nm }}</li>
+  </ul>
+</div>
+<div class="city_sort" ref="city_sort">
+  <div v-for="item in cityList" :key="item.index">
+     <h2>{{ item.index }}</h2>
+     <ul>
+        <li v-for="itemList in item.list" :key="itemList.id" @tap="handleToCity(itemList.nm,itemList.id)">{{ itemList.nm }}</li>
+     </ul>
+  </div>
+</div>
+```
+
+```js
+methods: {
+    // 添加对应的点击事件
+	handleToCity(nm,id) {
+        // 修改状态管理,不是异步操作,所以可以直接触发commit
+		this.$store.commit('city/CITY_INFO', {nm,id})
+        // 当我们完成刷新之后，记录下上次的城市定位,还是使用本地路由
+        // 当我们存储好之后,什么时候去取它呢?看下面
+        window.localStorage.setItem('nowNm', nm);
+        window.localStorage.setItem('nowId', id);
+        // 当我们修改完毕之后,要让其跳回到正在热映组件
+        this.$router.push('/movie/noePlaying');
+	}
+}
+```
+
+```js
+// 想一下我们是在哪里将其赋值为每次刷新都是北京的,回到状态管理的City组件中
+// 按照下面设置完成之后,我们每次刷新就会从本地存储中去取值了
+
+const state = {
+    nm: window.localStorage.getItem('nowNm') || '北京',
+    id: window.localStorage.getItem('nowId') || 1
+}
+```
+
+
+
+![vuex状态管理](D:\notes\Vue项目\mini_cinema\img\vuex状态管理.jpg)
+
+
+
+# 联动数据
+
+以上我们已经实现城市的切换了，但是页面中显示的城市信息还是没有相对应的。
+
+## `activated`生命周期
+
+是一个函数，`keep-alive`组件激活的时候调用，该钩子在服务器端渲染期间不被调用。
+
+将`activated`生命周期去替代`mounted`去发起网络请求：
+
+```js
+// 将mounted字段改为activated
+activated() {
+  this.axios.get('/api/movieOnInfoList?cityId=476').then((res) => {
+     console.log(1) // 这样在每次进行组件切换的时候,就会重新触发里面的代码
+     var msg = res.data.msg;
+     if(msg === 'ok') {
+        this.movieList = res.data.data.movieList;
+        this.flag = false 
+     }
+  })
+}
+```
+
+## 需求：当且仅当我们从城市组件切换到正在热映组件的时候，需要重新发起网络请求数据，否则直接走缓存
+
+```js
+// 在正在热映组件中的data中定义一个数值
+data() {
+    return {
+        prevCityId: -1 // 是个负数
+    }
+}
+activated() {
+    var cityId = this.$store.state.city.id // 1
+    // 如果两者id是不相等的,则直接走下面,如果相等,则return出去
+    if( this.preCityId === cityId) {return;}
+    // 设置加载动画
+    this.isLoading = true;
+    // 动态拼接id
+    this.axios.get('/api/movieOnInfoList?cityId=' + cityId).then(res => {
+        var msg = res.data.msg;
+        if(msg === 'ok') {
+            // 数据请求成功之后进行赋值
+            this.preCityId = cityId
+        }
+    })
+}
+```
+
+在即将到来组件页面也是同样去修改。
+
+注意在搜索页面中，我们直接获取`Id`进行拼接：
+
+```js
+watch() {
+    message(newVal) {
+        // 1.直接拿到id
+        var cityId = this.$store.state.city.id
+        // 2.进行Id动态拼接
+        this.axios.get('/api/searchList?cityId=' + cityId + '&kw=' + newVal,{
+            ...
+        })
+    }
+}
+```
+
+
+
+# 定位
+
+## 弹窗
+
+在`components`文件夹下新建`JS`文件夹，在`JS`文件夹里新建`index.js`文件，新建`MessageBox`文件夹，在`MessageBox`文件夹里新建`index.vue`文件。
+
+```vue
+<template>
+   <div class="messageBox">
+      <h2>定位</h2>
+      <p>北京</p>
+      <div>
+         <span>取消</span>
+         <span>切换定位</span>
+      </div>
+   </div>
+</template>
+
+<script>
+export default {
+   name: 'messageBox'
+}
+</script>
+
+<style lang="scss" scoped>
+   .messageBox{
+      width: 200px;
+      height: 140px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: white;
+      box-shadow: 3px 3px 3px 3px #ccc;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      margin: -60px 0 0 -100px;
+      h2{
+         text-align: center;
+         line-height: 40px;
+         font-size: 18px;
+      }
+      p{
+         text-align: center;
+         line-height: 40px;
+      }
+      div{
+         position: absolute;
+         bottom: 0;
+         width: 100%;
+         border-top: 1px solid #ccc;
+         display: flex;
+         // justify-content: space-between;
+         span{
+            flex: 1;
+            text-align: center;
+            line-height: 30px;
+            border-right: 1px solid #ccc;
+         }
+         span:nth-child(2) {
+            border: none;
+         }
+      }
+   }
+</style>
+```
+
+回到`Movie`页面进行引用：
+
+```html
+<MessageBox />
+```
+
+```js
+import MessageBox from '@/components/JS/MessageBox' // 引入
+export default {
+    name: 'Movie',
+    components: {
+        MessageBox // 注册
+    }
+}
+```
+
+![弹窗组件](D:\notes\Vue项目\mini_cinema\img\弹窗组件.jpg)
+
+```js
+// 上述的弹窗组件模板代码,如下:
+
+import Vue from 'vue'
+import MessageBox from './MessageBox'
+
+// 暴露出一个接口,考虑到接口可能有很多,我们使用了闭包去解决
+export var messageBox = (function() {
+   // 给我们定制的模板一些默认参数
+   // 这里default是保留字,我们再使用的时候还是将其换个名字把
+   var default = {
+      title: '',
+      content: '',
+      cancel: '',
+      ok: '',
+      handleCancel: null,
+      handleOk: null
+   }
+
+   var MyComponent = Vue.extend(MessageBox)
+
+   // 调用之后返回的函数出去
+   // 将配置参数opts传递进去
+   return function(opts) {
+      // 将外面的配置参数进行循环遍历并且覆盖
+      for(var attr in opts) {
+         default[attr] = opts[attr];
+      }
+      
+      var vm = new MyComponent({
+         el: document.createElement('div'), // 有el字段就会渲染其,而不会再生成template
+         data: {
+            title: default.title,
+            content: default.content,
+            cancel: default.cancel,
+            ok: default.ok
+         },
+         methods: {
+            handleCancel() {
+               default.handleCancel && default.handleCancel.call(this); // 要使得handleCancel拿到vm对象,所以我们使用call改变this指向
+                // 点击按钮,删除弹窗
+               document.body.removeChild(vm.$el);
+            },
+            handleOk() {
+               default.handleOk && default.handleOk.call(this);
+               document.body.removeChild(vm.$el);
+            }
+         }
+      });
+      // 添加到的位置
+      document.body.appendChild(vm.$el)
+   }
+})()
+```
+
+`MessageBox`中的`index.js`，修改内容如下：
+
+```html
+<template>
+   <div class="messageBox">
+      <!-- 将对应的值填进去 -->
+      <h2>{{ title }}</h2>
+      <p>{{ content }}</p>
+      <div>
+         <span @touchstart="handleCancel">{{ cancel }}</span>
+         <span @touchstart="handleOk">{{ ok }}</span>
+      </div>
+   </div>
+</template>
+```
+
+回到`Movie`页面进行测试一下：
+
+```js
+import {messageBox} from '@/components/JS'
+mounted() {
+    messageBox({
+        title: '定位',
+        content: '兰溪',
+        cancel: '取消',
+        ok: '切换定位',
+        handleCancel() {
+            
+        },
+        handleOk() {
+            
+        }
+    })
+}
+```
+
+最后一个问题，我们什么时候出现弹窗，使用`ajax`发起请求获取到数据之后！
+
+```js
+// 优化上述mounted中的代码
+
+mounted() {
+    setTimeout(() => { // 数据请求回来之后,延迟几秒再弹出城市定位
+        this.ajax.get('/api/getLocation').then(res => {
+            var msg = res.data.msg;
+            if(msg === 'ok') {
+                var nm = res.data.data.nm;
+                var id = res.data.data.id;
+                // 判断一下当前是否已经定位在当前的城市,如果是的话,就不再进行弹窗了
+                if(this.$store.state.city.id == id) {return;}
+                messageBox({
+                    title: '定位',
+                    content: nm,
+                    cancel: '取消',
+                    ok: '切换定位',
+                    handleCancel() {
+                        // 取消直接关闭就行了,不用加什么操作
+						// console.log(1)
+                    },
+                    handleOk() {
+                        // 点击切换城市之后,从缓存中拿取数据
+						window.localStorage.setItem('nowNm',nm);
+                        window.localStorage.setItem('nowId',id);
+                        // 当切换的时候,我们重新加载一下我们的页面
+                        window.localtion.reload()
+                    }
+                })
+            }
+        })
+    }, 3000)
+}
+```
+
+## 传递阶段代码到git
+
+```shell
+git status // 查看修改了哪些代码
+git add .
+git commit -m "..."
+git checkout dev // 切换到开发分支上
+git merge getCity --no-ff // 融合
+git log // 查看日志
+git push ck dev
+git branch
+git branch -d getCity
+git status
+```
+
+
+
+# 详情页
+
+```shell
+git checkout -b detailPage // 创建一个新分支
+```
+
+我们在`views`文件夹中的`Movies`文件夹中再新建一个文件`detail.vue`。
+
+```vue
+<template>
+  <div id="detailContainer">
+		<!-- <header id="header">
+			<i class="iconfont icon-right"></i><h1>影片详情</h1>
+		</header> -->
+
+      <!-- 3.使用Header组件去改造 -->
+      <Header title="影片详情">
+         <i class="iconfont icon-right"></i>
+      </Header>
+		<div id="content" class="contentDetail">
+			<div class="detail_list">
+				<div class="detail_list_bg"></div>
+				<div class="detail_list_filter"></div>
+				<div class="detail_list_content">
+					<div class="detail_list_img">
+						<img src="images/movie_1.jpg" alt="">
+					</div>
+					<div class="detail_list_info">
+						<h2>无名之辈</h2>
+						<p>A Cool Fish</p>
+						<p>9.2</p>
+						<p>剧情,喜剧,犯罪</p>
+						<p>中国大陆 / 108分钟</p>
+						<p>2018-11-16大陆上映</p>
+					</div>
+				</div>
+			</div>
+			<div class="detail_intro">
+				<p>在一座山间小城中，一对低配劫匪、一个落魄的泼皮保安、一个身体残疾却性格彪悍的残毒舌女以及一系列生活在社会不同轨迹上的小人物，在一个貌似平常的日子里，因为一把丢失的老枪和一桩当天发生在城中的乌龙劫案，从而被阴差阳错地拧到一起，发生的一幕幕令人啼笑皆非的荒诞喜剧。</p>
+			</div>
+			<div class="detail_player swiper-container">
+				<ul class="swiper-wrapper">
+					<li class="swiper-slide">
+						<div>
+							<img src="images/person_1.webp" alt="">
+						</div>
+						<p>陈建斌</p>
+						<p>马先勇</p>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</template>
+
+<script>
+// 1.引入Header组件
+import Header from '@/components/Header'
+export default {
+   name: 'Detail',
+   components: {
+      Header // 2.注册Header组件
+   }
+}
+</script>
+
+<style lang="scss" scoped>
+   #detailContainer{
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 9999;
+      width: 100%;
+      min-height: 100%;
+      background-color: white;
+      .contentDetail{ 
+         display: block; 
+         margin-bottom: 0;
+         .detail_list{ 
+            height: 200px; 
+            width: 100%; 
+            position: relative; 
+            overflow: hidden;
+            .detail_list_bg{ 
+               width: 100%; 
+               height: 100%; 
+               background: url(../images/movie_1.jpg) 0 40%; 
+               filter: blur(20px); 
+               background-size: cover; 
+               position: absolute; 
+               left: 0; 
+               top: 0;
+            }
+            .detail_list_filter{ 
+               width: 100%; 
+               height: 100%; 
+               position: absolute;
+               background-color: #40454d;
+               opacity: .55; 
+               position: absolute; 
+               left: 0; 
+               top: 0; 
+               z-index: 1;
+            }
+            .detail_list_content{ 
+               display: flex; 
+               width: 100%; 
+               height: 100%; 
+               position: absolute; 
+               left: 0; 
+               top: 0; 
+               z-index: 2;
+               .detail_list_img{ 
+                  width: 108px; 
+                  height: 150px; 
+                  border: 1px solid #f0f2f3; 
+                  margin: 20px;
+                  img{
+                     width: 100%; 
+                     height: 100%;
+                  }
+               }
+               .detail_list_info{ 
+                  margin-top: 20px;
+                  h2{ 
+                     font-size: 20px; 
+                     color: white; 
+                     font-weight: normal; 
+                     line-height: 40px;
+                  }
+                  p{
+                     color: white; 
+                     line-height: 20px; 
+                     font-size: 14px; 
+                     color:#ccc;
+                  }
+               }
+            }
+         }
+      }
+   }
+</style>
+```
+
+改造`Header`组件：
+
+```html
+// 加上一个slot标签插槽,就是上述代码中的返回图标<i></i>替换位
+<header id="header">
+  <slot></slot><h1>{{ title }}</h1>
+</header>
+```
+
+## 命名视图处理路由问题
+
+![命名视图](D:\notes\Vue项目\mini_cinema\img\命名视图.jpg)
+
+我们需要在`Movie`页，点击具体电影，跳出详情页：
+
+```html
+<router-view name="detail" />
+```
+
+回到路由配置文件中：
+
+```js
+{path: '/movie',component: Movie,
+    children: [
+        {path: 'city',component: () => import('@/components/City')},
+        // 路由中这样配
+        { 
+            path: 'detail', // 此处的path对应路由中的name属性值
+            components: { // 注意是components
+                detail: () => import('@/views/Movie/detail')
+            }
+        },
+        {path: 'search',component: () => import('@/components/Search')},
+        {path: '/movie',redirect: '/movie/nowPlaying'}
+    ]
+},
+```
+
+## 给详情页后退图标添加点击事件
+
+这样貌似不行：
+
+```html
+<i class="iconfont icon-right" @touchstart="handleToBack"></i>
+methods: {
+	handleToBack() {
+            this.$router.back()
+	}
+}
+```
+
+回到正在热映组件中：
+
+```html
+// 绑定点击事件,并将id传递过去
+<div class="pic_show" @tap="handleToDetail(item.id)">
+ <img :src="item.img | setWH('128.180')" alt=""> 
+</div>
+```
+
+```js
+methods: {
+    handleToDetail(movieId) {
+    	console.log(movieId)
+    },
+}
+```
+
+还需要配置一下动态路由：
+
+依旧是上面的路由中，加上`:movieId`即可：
+
+```js
+{path: '/movie',component: Movie,
+    children: [
+        {path: 'city',component: () => import('@/components/City')},
+        // 路由中这样配
+        { 
+            path: 'detail/:movieId', // 此处的path对应路由中的name属性值
+            components: { // 注意是components
+                detail: () => import('@/views/Movie/detail')
+            }
+        },
+        {path: 'search',component: () => import('@/components/Search')},
+        {path: '/movie',redirect: '/movie/nowPlaying'}
+    ]
+},
+```
+
+```js
+methods: {
+    handleToDetail(movieId) {
+        // console.log(movieId)
+        this.$router.push('/movie/detail/' + movieId)
+    },
+}
+```
+
+以上便是完成了详情页的跳转和返回操作。
+
+## 最后将传递过来的详情页根据id进行网络请求拿到数据
+
+因为我们使用的是命名视图去实现动态路由，所以使用字段`props`去实现：
+
+```js
+{
+    path: 'detail/movieId',
+    components: {
+        detail: () => import('@/views/Movie/detail')
+    },
+    props: {
+        detail: true
+    }
+}
+```
+
+回到详情页，直接使用`props`字段拿到`id`：
+
+```js
+export default {
+    name: 'Detail',
+    props: ['movieId'],
+    mounted() {
+        console.log(this.movieId)
+    }
+}
+```
+
+## 当我们在详情页点击回退图标的时候，希望有一个动画效果
+
+本来是可以使用`transition`去包裹实现动画的，因为与`ios`向右滑动相冲突，所以我们决定自己写一个动画。
+
+```html
+<div id="detailContainer" class="slide-enter-active"></div>
+```
+
+```css
+.slide-enter-active{
+  animation: .3s slideMove;
+}
+@keyframes slideMove{
+  0%{
+     transform: translateX(100%);
+  }
+  100%{
+     transform: translate(0);
+  }
+}
+```
+
+`bug`：在我们进行动画过渡的时候，发现过渡过程中页面上的内容消失了。因为页面上只有一个`ul`，而且页面上有两个`router-view`，所以当展示一个的时候，另一个自然就断开连接了。解决办法就是给一个`default`字段：
+
+```js
+{
+    path: 'detail/movieId',
+    components: {
+        default: () => import('@/components/NowPlaying'), // 加上这个default字段,设置一下就行了
+        detail: () => import('@/views/Movie/detail')
+    },
+    props: {
+        detail: true
+    }
+}
+```
+
+如果有多个页面都是需要使用上述动画的，那么我们就将其再多写一份路由配置一下。
+
+ ## 提交到git 
+
+```shell
+git add .
+git commit -m "..."
+git checkout dev
+git merge detailPage --no-ff
+git push ck dev
+git branch -d detailPage
+```
+
+
+
+# 当我们第一次加载资源的时候，显示一个整体的加载动画
+
+在`index.html`文件中：
+
+```html
+<style>
+    #app{
+        display: flex;
+        height: 100%;
+    }
+    #app div{
+        margin: auto;
+    }
+</style>
+<div id="app">
+    <div>
+        mini_cinema正在加载中...
+    </div>
+</div>
+```
+
+
+
+# 打包
+
+## 关于路由访问的起始路径
+
+```js
+// 路由中添加一个字段
+const router = new VueRouter({
+    routes: [
+        ...
+    ],
+    mode: 'history',
+    base: 'mini' // 这里添加字段表示以后我们的项目路由都是以mini开头的
+})
+```
+
+![base路由设置](D:\notes\Vue项目\mini_cinema\img\base路由设置.jpg)
+
+## 关于静态资源的路径
+
+回到`vue.config.js`中，添加`publicPath`字段：
+
+```js
+// 反向代理的配置,解决跨域问题
+
+module.exports = {
+	publicPath: '/miaomiao', 
+    devServer: {
+       proxy: {
+           '/api': {
+               target: 'http://39.97.33.178',
+               changeOrigin: true
+           }
+       }
+    }
+}
+```
+
+## 打包
+
+```shell
+npm run build
+```
+
+
+
+
+
+
+
