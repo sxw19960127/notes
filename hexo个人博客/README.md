@@ -67,8 +67,8 @@ permalink_defaults:
 文章归属分类：
 
 ```
-title: #文章标题
-tags: #文章标签
-categories: #文章分类
+title: 文章标题
+tags: 文章标签
+categories: 文章分类
 description: " "
 ```
